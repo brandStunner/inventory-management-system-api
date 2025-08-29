@@ -28,3 +28,5 @@ engine = create_engine(DATABASE_URL, echo=True)
 # Create the database (no checks)
 create_database(engine.url)
 print(f"Database '{DB_NAME}' created successfully!")
+
+
