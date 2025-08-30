@@ -5,28 +5,41 @@ from flask import Flask, jsonify, request, make_response
 from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
 from urllib.parse import quote_plus
-from sqlalchemy import create_engine, text
+'''
+REQUIRED FOR DATABASE CREATION ONLY, MAY DELETE ONCE COMPLETED
+# from sqlalchemy import create_engine, text
+# from sqlalchemy import create_engine
+'''
+
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import create_engine
+
 from sqlalchemy_utils import create_database
 
+
 load_dotenv()
+app = Flask(__name__)
 
-
-DB_USER = "postgres"
-DB_PASSWORD = "your_password"
-DB_HOST = "localhost"
-DB_PORT = "5432"
-DB_NAME = "students_db"
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST =  os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT")
+DB_NAME = os.getenv("DB_NAME")
 
 # Connection URL for the new database
-DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+password = quote_plus(DB_PASSWORD)
+DATABASE_URI = f"postgresql+psycopg2://{DB_USER}:{password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URI
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-# Create engine
+'''
+# establish the enigne
 engine = create_engine(DATABASE_URL, echo=True)
 
 # Create the database (no checks)
 create_database(engine.url)
 print(f"Database '{DB_NAME}' created successfully!")
+'''
+
+
 
 
