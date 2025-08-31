@@ -40,4 +40,65 @@ class Inventory(db.Model):
     price = db.Column(db.Float, nullable=False, default=0.0)
     description = db.Column(db.Text, nullable=True)
 
+    def __repr__(self):
+        print(f"<Item {self.name}>")
 
+with app.app_context():
+    db.create_all()
+
+@app.route("/")
+def welcome_page():
+    return jsonify({"message":"Welcome!"})
+
+@app.route("/home")
+def view_al():
+    try:
+        all_items = Inventory.query.all()
+
+        inventory_items = []
+        for inventory_item in all_items:
+            inventory_items.append({
+                 "id": inventory_item.id,   
+                 "name": inventory_item.name,
+                 "quantity": inventory_item.quantity,
+                 "price": inventory_item.price,
+                 "description": inventory_item.description
+                }
+            )
+        return jsonify({
+            "message" : "All inventory items"
+            "all items": inventory_items,
+            "total available items": len(inventory_items)
+        })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
