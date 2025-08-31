@@ -71,7 +71,8 @@ def view_al():
             "total available items": len(inventory_items)
         })
 
-
+    except Exception as e:
+        return jsonify({"Error": "Failed to retrieve students", "error": str(e)}), 500 
 
 
 
