@@ -31,15 +31,13 @@ DATABASE_URI = f"postgresql+psycopg2://{DB_USER}:{password}@{DB_HOST}:{DB_PORT}/
 app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URI
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-'''
-# establish the enigne
-engine = create_engine(DATABASE_URL, echo=True)
+db = SQLAlchemy(app)
 
-# Create the database (no checks)
-create_database(engine.url)
-print(f"Database '{DB_NAME}' created successfully!")
-'''
-
-
+class Inventory(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    name = db.Column(db.String(100), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False, default=0)
+    price = db.Column(db.Float, nullable=False, default=0.0)
+    description = db.Column(db.Text, nullable=True)
 
 
