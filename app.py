@@ -77,7 +77,7 @@ def view_all():
     except Exception as e:
         return jsonify({"Error": "Failed to retrieve inventory", "error": str(e)}), 500 
 
-
+# making a get to specific item using id
 @app.route("/inventory/<int:item_id>", methods=["GET"])
 def get_item(item_id):
     item = Inventory.query.get(item_id)
@@ -138,7 +138,7 @@ def add_item():
 
 
 #  PUT ROUTE this is where I make changes to items 
-@app.route("/inventory/int:item_id>", methods = ["PUT"]) 
+@app.route("/inventory/<int:item_id>", methods = ["PUT"]) 
 def update_item(item_id):
     try:
         item = Inventory.query.get(item_id)
@@ -184,9 +184,22 @@ def update_item(item_id):
     }), 500
     
 
-
-
-
+@app.route("/inventory/<int:item_id>", methods = ["DELETE"])
+def delete_item(item_id):
+    try:
+        item = Inventory.query.get(item_id)
+        if not item:
+            return jsonify({{"Error": "item not found"}}), 400 
+        
+        db.session.delete(item)
+        db.session.commit()
+        return jsonify({"message": f"{item.name} deleted successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "erro": "Error deleting item",
+            "details": str(e)
+            }), 500
 
 
 
