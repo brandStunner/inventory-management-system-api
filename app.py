@@ -1,20 +1,11 @@
 
 import os
-import psycopg2
 from flask import Flask, jsonify, request, make_response
 from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
 from urllib.parse import quote_plus
-'''
-REQUIRED FOR DATABASE CREATION ONLY, MAY DELETE ONCE COMPLETED
-# from sqlalchemy import create_engine, text
-# from sqlalchemy import create_engine
-'''
 
 from sqlalchemy.exc import IntegrityError
-
-from sqlalchemy_utils import create_database
-
 
 load_dotenv()
 app = Flask(__name__)
@@ -36,12 +27,23 @@ db = SQLAlchemy(app)
 class Inventory(db.Model):
     id = db.Column(db.Integer, primary_key = True)
     name = db.Column(db.String(100), nullable=False)
+    sku = db.Column(db.String(100),nullable=False, unique=True)
     quantity = db.Column(db.Integer, nullable=False, default=0)
     price = db.Column(db.Float, nullable=False, default=0.0)
     description = db.Column(db.Text, nullable=True)
 
     def __repr__(self):
-        print(f"<Item {self.name}>")
+        return (f"<Item {self.name}>")
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "sku": self.sku,
+            "quantity": self.quantity,
+            "price": self.price,
+            "description": self.description
+        }
 
 with app.app_context():
     db.create_all()
@@ -50,8 +52,8 @@ with app.app_context():
 def welcome_page():
     return jsonify({"message":"Welcome!"})
 
-@app.route("/home")
-def view_al():
+@app.route("/inventory", methods=["GET"])
+def view_all():
     try:
         all_items = Inventory.query.all()
 
@@ -66,20 +68,72 @@ def view_al():
                 }
             )
         return jsonify({
-            "message" : "All inventory items"
-            "all items": inventory_items,
-            "total available items": len(inventory_items)
+            "message" : "All inventory items",
+            "total": len(inventory_items),
+            "items": inventory_items
         })
 
     except Exception as e:
-        return jsonify({"Error": "Failed to retrieve students", "error": str(e)}), 500 
+        return jsonify({"Error": "Failed to retrieve inventory", "error": str(e)}), 500 
 
 
+@app.route("/inventory/<int:item_id>", methods=["GET"])
+def get_item(item_id):
+    item = Inventory.query.get(item_id)
+    if not item:
+        return jsonify({"error": "Item not found"}), 404
+    return jsonify({"item": item.to_dict()})
 
+@app.route("/inventory", methods = ["POST"])
+def add_item():
+    try:
+        data = request.get_json()
+        name = data.get("name")
+        sku = data.get("sku")
+        quantity = data.get("quantity")
+        price = data.get("price")
+        description = data.get("description")
 
+        if not name:
+            return jsonify({"error": "name is required"}),400
 
+        try:
+            quantity = int(data.get("quantity"))
+            price = float(data.get("price"))
+        except (TypeError, ValueError):
+            return jsonify({"error": "quantity must be an integer and price must be a number"}), 400
 
+        new_inventory_item = Inventory(name = name,sku = sku, quantity = quantity, price = price, description = description)
 
+        db.session.add(new_inventory_item)
+        db.session.commit()
+
+        inventory_data = {
+            "id": new_inventory_item.id,
+            "name": new_inventory_item.name,
+            "sku": new_inventory_item.sku,
+            "quantity": new_inventory_item.quantity,
+            "price": new_inventory_item.price,
+            "description": new_inventory_item.description
+        }
+
+        
+        return make_response(jsonify({
+        "message": "new inventory added",
+        "item": inventory_data
+        })), 201
+    
+    except IntegrityError:
+        db.session.rollback()
+        return make_response(jsonify({"error": "item already exists"})),409
+    except Exception as e:
+        db.session.rollback()
+        return make_response(jsonify({
+        "error": "Error inserting new inventory",
+        "details": str(e)
+    })), 500
+
+  
 
 
 
