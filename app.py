@@ -52,6 +52,7 @@ with app.app_context():
 def welcome_page():
     return jsonify({"message":"Welcome!"})
 
+# GET ROUTE, this is where you view all available options
 @app.route("/inventory", methods=["GET"])
 def view_all():
     try:
@@ -84,6 +85,8 @@ def get_item(item_id):
         return jsonify({"error": "Item not found"}), 404
     return jsonify({"item": item.to_dict()})
 
+
+# POST ROUTE, this is where i add new items
 @app.route("/inventory", methods = ["POST"])
 def add_item():
     try:
@@ -133,14 +136,53 @@ def add_item():
         "details": str(e)
     })), 500
 
-  
 
+#  PUT ROUTE this is where I make changes to items 
+@app.route("/inventory/int:item_id>", methods = ["PUT"]) 
+def update_item(item_id):
+    try:
+        item = Inventory.query.get(item_id)
+        if not item:
+            return jsonify({"Error": "No item found"}),400
+        
+        data = request.get_json()
+        if "name" in data:
+            item.name = data["name"]
 
+        if "sku" in data:
+            item.sku = data["sku"]
 
+        if "quantity" in data:
+            try:
+                item.quantity = int(data["quantity"])
+            except (TypeError, ValueError):
+                return jsonify({"error": "this value must be an integer"}), 400
+        
+        if "price" in data:
+            try:
+                item.price = float(data["price"])
+            except (TypeError, ValueError):
+                return jsonify({"error": "this value must be a number"}), 400
+        if "description" in data:
+            item.description = data["description"]
 
+        db.session.commit()
 
-
-
+        return jsonify({
+            "message": "item updated successfully",
+            "item": item.to_dict()
+        }), 201
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "sku must be unique"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "error": "failed to update item",
+            "details": str(e)
+            
+    }), 500
+    
 
 
 
