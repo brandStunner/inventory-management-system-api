@@ -4,6 +4,7 @@ from flask import Flask, jsonify, request, make_response
 from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
 from urllib.parse import quote_plus
+from werkzeug.security import generate_password_hash, check_password_hash
 
 from sqlalchemy.exc import IntegrityError
 
@@ -23,6 +24,22 @@ app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URI
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
+
+# User detail Model
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    username = db.Column(db.String(20), nullable = False, unique = True)
+    hashed_password = db.Column(db.String(200), nullable = False)
+
+    def set_password(self, password):
+        self.hashed_password = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(password)
+        
+
+# Inventory Model(table)
+
 
 class Inventory(db.Model):
     id = db.Column(db.Integer, primary_key = True)
@@ -48,6 +65,50 @@ class Inventory(db.Model):
 with app.app_context():
     db.create_all()
 
+####################### login Routes ###################################
+
+# register new user
+@app.route("/register", methods=["POST"])
+def register():
+    data = request.get_json()
+    username = data.get("username")
+    password = data.get("password")
+
+    if not username or not password:
+        return jsonify({"Error": "username and password required"}),400
+    
+    if User.query.filter_by(username=username).first():
+        return jsonify({"error": "User already exists"}), 400
+    
+    new_user = User(username=username)
+    new_user.set_password(password)
+
+    db.session.add(new_user)
+    db.session.commit()
+    
+    return jsonify({
+        "message": "registered successfully"
+        }), 201
+
+
+# login registered user 
+@app.route("/login", methods=["POST"])
+def login():
+    data = request.get_json()
+    username = data.get("username")
+    password = data.get("password")
+
+    user = User.query.filter_by(username=username).first()
+
+    if user and user.check_password(password):
+        return jsonify({
+            "message": "login successful"
+            }), 201
+    else:
+        return jsonify({"message": "invalid username or password"}),401
+
+
+#### Inventory Routes #### 
 @app.route("/")
 def welcome_page():
     return jsonify({"message":"Welcome!"})
@@ -86,7 +147,7 @@ def get_item(item_id):
     return jsonify({"item": item.to_dict()})
 
 
-# POST ROUTE, this is where i add new items
+# POST ROUTE, this is where new items are added
 @app.route("/inventory", methods = ["POST"])
 def add_item():
     try:
