@@ -32,11 +32,12 @@ The API supports user authentication (registration, login, logout) and secure CR
 ---
 
 ## 📂 Project Structure
+```
 │── app.py # Main Flask app
 │── requirements.txt # Dependencies
 │── .env # Environment variables
 │── README.md # Documentation
-
+```
 ## ⚙️ Setup Instructions
 
 ### 1️⃣ Clone Repository
