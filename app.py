@@ -1,15 +1,15 @@
 
 import os
-from flask import Flask, jsonify, request, make_response
+from flask import Flask, jsonify, request, make_response, session, redirect
 from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
 from urllib.parse import quote_plus
 from werkzeug.security import generate_password_hash, check_password_hash
-
 from sqlalchemy.exc import IntegrityError
 
 load_dotenv()
 app = Flask(__name__)
+app.secret_key = os.getenv("SESSION_SECRET_KEY", "fallback_dev_key") #cookie session logins
 
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
@@ -25,7 +25,8 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
 
-# User detail Model
+# User User detail Model
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key = True)
     username = db.Column(db.String(20), nullable = False, unique = True)
@@ -35,11 +36,10 @@ class User(db.Model):
         self.hashed_password = generate_password_hash(password)
 
     def check_password(self, password):
-        return check_password_hash(password)
+        return check_password_hash(self.hashed_password, password)
         
 
 # Inventory Model(table)
-
 
 class Inventory(db.Model):
     id = db.Column(db.Integer, primary_key = True)
@@ -65,6 +65,16 @@ class Inventory(db.Model):
 with app.app_context():
     db.create_all()
 
+
+# HELPER FUNCTION TO ENFORCE LOGIN 
+def login_required(func):
+    def wrapper(*args, **kwargs):
+        if "user_id" not in session:
+            return jsonify({"error": "You must be logged in to access this"}), 401
+        return func(*args, **kwargs)
+    wrapper.__name__ = func.__name__  # avoid Flask decorator issues
+    return wrapper
+
 ####################### login Routes ###################################
 
 # register new user
@@ -75,7 +85,7 @@ def register():
     password = data.get("password")
 
     if not username or not password:
-        return jsonify({"Error": "username and password required"}),400
+        return jsonify({"error": "username and password required"}),400
     
     if User.query.filter_by(username=username).first():
         return jsonify({"error": "User already exists"}), 400
@@ -101,11 +111,21 @@ def login():
     user = User.query.filter_by(username=username).first()
 
     if user and user.check_password(password):
+        session["user_id"] = user.id
         return jsonify({
             "message": "login successful"
             }), 201
     else:
         return jsonify({"message": "invalid username or password"}),401
+    
+# LOGOUT ROUTE
+
+@app.route("/logout", methods=["POST"])
+@login_required
+def logout():
+    session.pop("user_id", None)
+    return jsonify({"message": "logged out successfully"}), 200
+
 
 
 #### Inventory Routes #### 
@@ -115,6 +135,7 @@ def welcome_page():
 
 # GET ROUTE, this is where you view all available options
 @app.route("/inventory", methods=["GET"])
+@login_required
 def view_all():
     try:
         all_items = Inventory.query.all()
@@ -149,6 +170,7 @@ def get_item(item_id):
 
 # POST ROUTE, this is where new items are added
 @app.route("/inventory", methods = ["POST"])
+@login_required
 def add_item():
     try:
         data = request.get_json()
@@ -200,11 +222,12 @@ def add_item():
 
 #  PUT ROUTE this is where I make changes to items 
 @app.route("/inventory/<int:item_id>", methods = ["PUT"]) 
+@login_required
 def update_item(item_id):
     try:
         item = Inventory.query.get(item_id)
         if not item:
-            return jsonify({"Error": "No item found"}),400
+            return jsonify({"error": "No item found"}),400
         
         data = request.get_json()
         if "name" in data:
@@ -246,11 +269,12 @@ def update_item(item_id):
     
 
 @app.route("/inventory/<int:item_id>", methods = ["DELETE"])
+@login_required
 def delete_item(item_id):
     try:
         item = Inventory.query.get(item_id)
         if not item:
-            return jsonify({{"Error": "item not found"}}), 400 
+            return jsonify({"error": "item not found"}), 400 
         
         db.session.delete(item)
         db.session.commit()
@@ -258,7 +282,7 @@ def delete_item(item_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({
-            "erro": "Error deleting item",
+            "error": "Error deleting item",
             "details": str(e)
             }), 500
 
