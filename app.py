@@ -111,7 +111,7 @@ def login():
     user = User.query.filter_by(username=username).first()
 
     if user and user.check_password(password):
-        session["user_id"] = user.id
+        session["user_id"] = user.id #needed for login
         return jsonify({
             "message": "login successful"
             }), 201
@@ -126,7 +126,7 @@ def logout():
     session.pop("user_id", None)
     return jsonify({"message": "logged out successfully"}), 200
 
-
+# print(len("scrypt:32768:8:1$FogFYCH2I97qDvLW$36f04cc0eeb390a26c1cba89807fd5816d1f1d232451c41e0df1882952791381351fa26821edf351f5a87257ada3d44a4568824e712ae9bce6ad238e5dac2de2"))
 
 #### Inventory Routes #### 
 @app.route("/")
