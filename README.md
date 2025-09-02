@@ -40,7 +40,7 @@ The API supports user authentication (registration, login, logout) and secure CR
 ## ⚙️ Setup Instructions
 
 ### 1️⃣ Clone Repository
-```bash
+
 git clone https://github.com/brandStunner/inventory-management-system-api.git
 cd inventory-api
 
@@ -66,10 +66,11 @@ DB_NAME=inventory
 
 (🔑 Replace values with your actual PostgreSQL credentials)
 
-### Run the App
+---
+## Run the App
 python app.py
 
-# API Endpoints
+## API Endpoints
 🔐 Authentication
 
 POST /register  # Register a new user
@@ -111,5 +112,4 @@ Hosting options: Render
 
  👨‍💻 Author
 
-Built by Built by [Kofi Brandful](https://x.com/pointbrandrangel)
-**Twitter:** [@pointbrandrange](https://x.com/pointbrandrange)
+Built by Built by [Kofi Brandful] (https://x.com/pointbrandrangel)
