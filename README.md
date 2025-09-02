@@ -111,4 +111,4 @@ Hosting options: Render
 
  👨‍💻 Author
 
-Built by Kofi Brandful
+Built by Built by [Kofi Brandful](https://x.com/pointbrandrangel)
