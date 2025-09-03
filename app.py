@@ -118,16 +118,17 @@ def login():
     else:
         return jsonify({"message": "invalid username or password"}),401
     
-# LOGOUT ROUTE
+########## LOGOUT ROUTE ####################
 
 @app.route("/logout", methods=["POST"])
 @login_required
 def logout():
+    '''This function makes session inactive and allows for logout'''
     session.pop("user_id", None)
     return jsonify({"message": "logged out successfully"}), 200
 
 
-#### Inventory Routes #### 
+############### Inventory Routes ################ 
 @app.route("/")
 def welcome_page():
     return jsonify({"message":"Welcome!"})
@@ -136,6 +137,7 @@ def welcome_page():
 @app.route("/inventory", methods=["GET"])
 @login_required
 def view_all():
+    '''This function allows logged in users to view api endpoint with all items in inventory'''
     try:
         all_items = Inventory.query.all()
 
@@ -158,19 +160,23 @@ def view_all():
     except Exception as e:
         return jsonify({"Error": "Failed to retrieve inventory", "error": str(e)}), 500 
 
-# making a get to specific item using id
+# THIS ROUTE ALLOWS YOU VIEW INDIVIDUAL ITEMS USING THEIR IDs
 @app.route("/inventory/<int:item_id>", methods=["GET"])
 def get_item(item_id):
+    '''This function allows users to view individual item using their id.'''
     item = Inventory.query.get(item_id)
     if not item:
         return jsonify({"error": "Item not found"}), 404
     return jsonify({"item": item.to_dict()})
 
 
-# POST ROUTE, this is where new items are added
+# THIS ROUTE IS WHERE ITEMS ARE ADDED TO THE INVENTORY DATABASE 
 @app.route("/inventory", methods = ["POST"])
 @login_required
 def add_item():
+    '''This function is responsible for adding a new inventory item through the route 127.0.0.1:5000/inventory
+    using the post method
+    '''
     try:
         data = request.get_json()
         name = data.get("name")
@@ -219,10 +225,13 @@ def add_item():
     })), 500
 
 
-#  PUT ROUTE this is where I make changes to items 
+#  PUT ROUTE THIS IS WHERE ITEMS ARE UPDATED 
 @app.route("/inventory/<int:item_id>", methods = ["PUT"]) 
 @login_required
 def update_item(item_id):
+    '''This function takes id of an inventory and make changes to it, access through the route
+        "localhost/inventory/1" eg if item id is 1
+    '''
     try:
         item = Inventory.query.get(item_id)
         if not item:
@@ -266,10 +275,11 @@ def update_item(item_id):
             
     }), 500
     
-
+#THIS ROUTE DELETES ITEMS
 @app.route("/inventory/<int:item_id>", methods = ["DELETE"])
 @login_required
 def delete_item(item_id):
+    '''This function takes the id of item to delete and deletes it through the route "localhost/inventory/1" if id is 1'''
     try:
         item = Inventory.query.get(item_id)
         if not item:
