@@ -65,7 +65,7 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=inventory
 
-(🔑 Replace values with your actual PostgreSQL credentials)
+(🔑Mostly, only the password will change, however,if you have replaced default values, then replace values with your actual PostgreSQL credentials)
 
 ---
 ## Run the App
