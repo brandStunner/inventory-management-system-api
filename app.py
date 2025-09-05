@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 
 load_dotenv()
 app = Flask(__name__)
-app.secret_key = os.getenv("SESSION_SECRET_KEY", "fallback_dev_key") #cookie session logins
+app.secret_key = os.getenv("SESSION_SECRET_KEY", "fallback_dev_key") #session logins
 
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
@@ -131,7 +131,7 @@ def logout():
 ############### Inventory Routes ################ 
 @app.route("/")
 def welcome_page():
-    return jsonify({"message":"Welcome!"})
+    return jsonify({"message":"Welcome to the invenoty page!"})
 
 # GET ROUTE, this is where you view all available options
 @app.route("/inventory", methods=["GET"])
@@ -146,6 +146,7 @@ def view_all():
             inventory_items.append({
                  "id": inventory_item.id,   
                  "name": inventory_item.name,
+                 "sku": inventory_item.sku,
                  "quantity": inventory_item.quantity,
                  "price": inventory_item.price,
                  "description": inventory_item.description
@@ -162,6 +163,7 @@ def view_all():
 
 # THIS ROUTE ALLOWS YOU VIEW INDIVIDUAL ITEMS USING THEIR IDs
 @app.route("/inventory/<int:item_id>", methods=["GET"])
+@login_required
 def get_item(item_id):
     '''This function allows users to view individual item using their id.'''
     item = Inventory.query.get(item_id)
