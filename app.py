@@ -1,15 +1,19 @@
 
 import os
-from flask import Flask, jsonify, request, make_response, session, redirect
+from flask import Flask, jsonify, request, make_response
 from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
 from urllib.parse import quote_plus
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.exc import IntegrityError
+from flask_jwt_extended import (JWTManager, create_access_token, jwt_required, get_jwt_identity)
+from datetime import timedelta
 
 load_dotenv()
 app = Flask(__name__)
-app.secret_key = os.getenv("SESSION_SECRET_KEY", "fallback_dev_key") #session logins
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+jwt = JWTManager(app)
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=30)
 
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
@@ -66,16 +70,7 @@ with app.app_context():
     db.create_all()
 
 
-# HELPER FUNCTION TO ENFORCE LOGIN 
-def login_required(func):
-    def wrapper(*args, **kwargs):
-        if "user_id" not in session:
-            return jsonify({"error": "You must be logged in to access this"}), 401
-        return func(*args, **kwargs)
-    wrapper.__name__ = func.__name__  # avoid Flask decorator issues
-    return wrapper
 
-####################### login Routes ###################################
 
 # register new user
 @app.route("/register", methods=["POST"])
@@ -100,7 +95,6 @@ def register():
         "message": "registered successfully"
         }), 201
 
-
 # login registered user 
 @app.route("/login", methods=["POST"])
 def login():
@@ -109,36 +103,36 @@ def login():
     password = data.get("password")
 
     user = User.query.filter_by(username=username).first()
-
     if user and user.check_password(password):
-        session["user_id"] = user.id #needed for login
+        access_token = create_access_token(identity=user.username)
         return jsonify({
-            "message": "login successful"
-            }), 201
+            "message": "login successful",
+            "access_token": access_token
+        }), 200        
     else:
         return jsonify({"message": "invalid username or password"}),401
     
 ########## LOGOUT ROUTE ####################
 
 @app.route("/logout", methods=["POST"])
-@login_required
+@jwt_required()
 def logout():
     '''This function makes session inactive and allows for logout'''
-    session.pop("user_id", None)
     return jsonify({"message": "logged out successfully"}), 200
 
 
 ############### Inventory Routes ################ 
 @app.route("/")
 def welcome_page():
-    return jsonify({"message":"Welcome to the invenoty page!"})
+    return jsonify({"message":"Welcome to the inventory page!"})
 
 # GET ROUTE, this is where you view all available options
 @app.route("/inventory", methods=["GET"])
-@login_required
+@jwt_required()
 def view_all():
     '''This function allows logged in users to view api endpoint with all items in inventory'''
     try:
+        current_user_id = get_jwt_identity()
         all_items = Inventory.query.all()
 
         inventory_items = []
@@ -163,7 +157,7 @@ def view_all():
 
 # THIS ROUTE ALLOWS YOU VIEW INDIVIDUAL ITEMS USING THEIR IDs
 @app.route("/inventory/<int:item_id>", methods=["GET"])
-@login_required
+@jwt_required()
 def get_item(item_id):
     '''This function allows users to view individual item using their id.'''
     item = Inventory.query.get(item_id)
@@ -174,7 +168,7 @@ def get_item(item_id):
 
 # THIS ROUTE IS WHERE ITEMS ARE ADDED TO THE INVENTORY DATABASE 
 @app.route("/inventory", methods = ["POST"])
-@login_required
+@jwt_required()
 def add_item():
     '''This function is responsible for adding a new inventory item through the route 127.0.0.1:5000/inventory
     using the post method
@@ -229,7 +223,7 @@ def add_item():
 
 #  PUT ROUTE THIS IS WHERE ITEMS ARE UPDATED 
 @app.route("/inventory/<int:item_id>", methods = ["PUT"]) 
-@login_required
+@jwt_required()
 def update_item(item_id):
     '''This function takes id of an inventory and make changes to it, access through the route
         "localhost/inventory/1" eg if item id is 1
@@ -279,7 +273,7 @@ def update_item(item_id):
     
 #THIS ROUTE DELETES ITEMS
 @app.route("/inventory/<int:item_id>", methods = ["DELETE"])
-@login_required
+@jwt_required()
 def delete_item(item_id):
     '''This function takes the id of item to delete and deletes it through the route "localhost/inventory/1" if id is 1'''
     try:
