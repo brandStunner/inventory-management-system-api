@@ -6,14 +6,32 @@ from dotenv import load_dotenv
 from urllib.parse import quote_plus
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.exc import IntegrityError
-from flask_jwt_extended import (JWTManager, create_access_token, jwt_required, get_jwt_identity)
-from datetime import timedelta
+from flask_jwt_extended import (JWTManager, create_access_token, jwt_required, get_jwt_identity, get_jwt)
+from datetime import timedelta , datetime, timezone
 
 load_dotenv()
 app = Flask(__name__)
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 jwt = JWTManager(app)
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=30)
+
+# In-memory blacklist for storing revoked tokens
+blacklisted_tokens = set()
+
+# Token blacklist checker
+@jwt.token_in_blocklist_loader
+def check_if_token_revoked(jwt_header, jwt_payload):
+    """Check if token is blacklisted in memory"""
+    jti = jwt_payload['jti']  # JWT ID (unique identifier for each token)
+    return jti in blacklisted_tokens
+
+# Error handler for revoked tokens
+@jwt.revoked_token_loader
+def revoked_token_callback(jwt_header, jwt_payload):
+    return jsonify({
+        "error": "Token has been revoked",
+        "message": "Please log in again"
+    }), 401
 
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
@@ -114,12 +132,37 @@ def login():
     
 ########## LOGOUT ROUTE ####################
 
+# @app.route("/logout", methods=["POST"])
+# @jwt_required()
+# def logout():
+#     '''This function makes session inactive and allows for logout'''
+#     return jsonify({"message": "logged out successfully"}), 200
+
 @app.route("/logout", methods=["POST"])
 @jwt_required()
 def logout():
-    '''This function makes session inactive and allows for logout'''
-    return jsonify({"message": "logged out successfully"}), 200
-
+    '''This function blacklists the current JWT token and logs out the user'''
+    try:
+        # Get the current token's JTI (JWT ID)
+        token = get_jwt()
+        jti = token['jti']
+        
+        # Add token to the in-memory blacklist
+        blacklisted_tokens.add(jti)
+        
+        # Get current user for response
+        current_user = get_jwt_identity()
+        
+        return jsonify({
+            "message": f"User {current_user} logged out successfully",
+            "logged_out_at": datetime.now(timezone.utc).isoformat()
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            "error": "Logout failed",
+            "details": str(e)
+        }), 500
 
 ############### Inventory Routes ################ 
 @app.route("/")
